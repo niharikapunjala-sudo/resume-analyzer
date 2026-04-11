@@ -1,0 +1,12 @@
+resume-analyzer/
+│
+├── backend/
+│   ├── app.py
+│   ├── parser.py
+│   └── skills.py
+│
+├── frontend/
+│   ├── src/
+│   └── package.json
+│
+└── README.md 
