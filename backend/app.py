@@ -1,87 +1,77 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import PyPDF2
-import os
+import React, { useState } from "react";
+import axios from "axios";
 
-app = Flask(__name__)
-CORS(app)
+function App() {
+  const [file, setFile] = useState(null);
+  const [result, setResult] = useState(null);
 
-# 🔥 Skill List
-SKILLS = [
-    "python", "java", "c", "c++", "javascript",
-    "react", "node", "flask", "django",
-    "html", "css", "sql", "mysql", "git", "ai"
-]
+  const uploadFile = async () => {
+    if (!file) {
+      alert("Please select a file");
+      return;
+    }
 
-@app.route("/")
-def home():
-    return "AI Resume Analyzer Backend Running 🚀"
+    const formData = new FormData();
+    formData.append("resume", file);
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    file = request.files.get("resume")
+    try {
+      console.log("File selected:", file);
 
-    if not file:
-        return jsonify({"error": "No file uploaded"})
+      const res = await axios.post(
+        "https://resume-analyzer-5aeq.onrender.com/analyze",
+        formData
+      );
 
-    # 📄 Read PDF
-    try:
-        pdf_reader = PyPDF2.PdfReader(file)
-        text = ""
+      console.log("RESULT FROM BACKEND:", res.data);
 
-        for page in pdf_reader.pages:
-            text += page.extract_text() or ""
+      setResult(res.data);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error connecting to backend");
+    }
+  };
 
-        text = text.lower()
+  return (
+    <div style={{ textAlign: "center", marginTop: "50px" }}>
+      <h1>🚀 AI Resume Analyzer</h1>
 
-    except Exception as e:
-        return jsonify({"error": "Error reading PDF"})
+      <input
+        type="file"
+        onChange={(e) => setFile(e.target.files[0])}
+      />
 
-    # 🔍 Find skills
-    found_skills = [skill for skill in SKILLS if skill in text]
+      <br /><br />
 
-    # 📊 Score
-    score = int((len(found_skills) / len(SKILLS)) * 100)
+      <button onClick={uploadFile}>Analyze Resume</button>
 
-    # 💼 Job Match
-    software_skills = ["python", "java", "react", "sql", "git"]
-    data_skills = ["python", "sql", "ai"]
+      {result && (
+        <div style={{ marginTop: "30px" }}>
+          <h3>ATS Score: {result.score}%</h3>
 
-    se_match = int((len([s for s in found_skills if s in software_skills]) / len(software_skills)) * 100)
-    ds_match = int((len([s for s in found_skills if s in data_skills]) / len(data_skills)) * 100)
+          <h4>Skills Found:</h4>
+          <p>{result.skills_found.join(", ")}</p>
 
-    # ❌ Missing Skills
-    missing = [s for s in software_skills if s not in found_skills]
+          <h4>Job Match:</h4>
+          <p>
+            Software Engineer: {result.job_match.software_engineer}%
+          </p>
+          <p>
+            Data Scientist: {result.job_match.data_scientist}%
+          </p>
 
-    # 🤖 AI Feedback (basic logic)
-    feedback = []
+          <h4>Missing Skills:</h4>
+          <p>{result.missing_skills.software_engineer.join(", ")}</p>
 
-    if score < 50:
-        feedback.append("Add more technical skills")
+          <h4>🤖 AI Feedback:</h4>
+          <ul>
+            {result.ai_feedback.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
-    if "project" not in text:
-        feedback.append("Include project details")
-
-    if "github" not in text:
-        feedback.append("Add GitHub profile")
-
-    if "internship" not in text:
-        feedback.append("Mention internship or experience")
-
-    return jsonify({
-        "score": score,
-        "skills_found": found_skills,
-        "job_match": {
-            "software_engineer": se_match,
-            "data_scientist": ds_match
-        },
-        "missing_skills": {
-            "software_engineer": missing
-        },
-        "ai_feedback": feedback
-    })
-
-
-# 🚀 IMPORTANT FOR DEPLOY (RENDER)
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+export default App;
